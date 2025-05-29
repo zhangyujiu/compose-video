@@ -1,17 +1,22 @@
 package com.example.video
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -22,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -34,10 +40,9 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.upstream.DefaultAllocator
 import androidx.media3.ui.compose.PlayerSurface
-import androidx.media3.ui.compose.SURFACE_TYPE_SURFACE_VIEW
+import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import androidx.media3.ui.compose.modifiers.resizeWithContentScale
 import androidx.media3.ui.compose.state.rememberPresentationState
-import com.example.video.ext.LifecycleEffect
 import com.example.video.ext.noRippleClickable
 import com.example.video.player.ExoPlayerCache
 import com.example.video.player.PlayerState
@@ -59,9 +64,9 @@ fun ComposeVideo(
     val context = LocalContext.current
     var player by remember { mutableStateOf<Player?>(null) }
     LaunchedEffect(Unit) {
-        //FIXME:会频繁创建Player
         player = initializePlayer(context)
     }
+
     player?.let {
         MediaPlayerPage(
             modifier = modifier,
@@ -113,6 +118,7 @@ private fun initializePlayer(context: Context): Player {
 
 const val TAG = "MediaPlayerPage"
 
+@SuppressLint("ConfigurationScreenWidthHeight")
 @OptIn(UnstableApi::class)
 @Composable
 fun MediaPlayerPage(
@@ -123,11 +129,12 @@ fun MediaPlayerPage(
     videoUrl: String,
     callbackRef: (PlayerState) -> Unit
 ) {
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val playerController = rememberPlayerStateController(player = player)
     val presentationState = rememberPresentationState(player)
+    val sliderPosition = remember { mutableIntStateOf(0) }
     var showPlayButton by remember { mutableStateOf(false) }
     var progressTimer by remember { mutableStateOf(false) }
-    var sliderPosition by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
         snapshotFlow { pagerState.settledPage }.collectLatest {
             if (it == page) {
@@ -139,11 +146,12 @@ fun MediaPlayerPage(
         playerController.setDatasource(videoUrl)
     }
 
-    LifecycleEffect(
-        onDestroy = {
+    DisposableEffect(Unit) {
+        onDispose {
+            playerController.release()
             progressTimer = false
         }
-    )
+    }
 
     LaunchedEffect(progressTimer) {
         launch {
@@ -152,7 +160,7 @@ fun MediaPlayerPage(
                     TAG,
                     "total: ${playerController.getDuration()}, position: ${playerController.getPosition()}"
                 )
-                sliderPosition = playerController.getPosition()
+                sliderPosition.intValue = playerController.getPosition()
                 delay(200)
             }
         }
@@ -175,18 +183,20 @@ fun MediaPlayerPage(
             else -> {}
         }
     }
-    Box(modifier.background(color = Color.Black)) {
+    Box(
+        modifier
+            .fillMaxSize()
+            .background(color = Color.Black)
+            .noRippleClickable {
+                playerController.toggle()
+            }
+    ) {
         PlayerSurface(
             player = player,
-            surfaceType = SURFACE_TYPE_SURFACE_VIEW,
+            surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
             modifier = Modifier
-                .resizeWithContentScale(
-                    ContentScale.None,
-                    presentationState.videoSizeDp
-                )
-                .noRippleClickable {
-                    playerController.toggle()
-                },
+                .size(screenWidth, screenWidth / playerController.ratio)
+                .align(Alignment.Center),
         )
 
         if (presentationState.coverSurface) {
@@ -207,17 +217,25 @@ fun MediaPlayerPage(
             )
         }
 
-        VideoProgressSlider(
-            modifier = Modifier
-                .padding(start = 20.dp, end = 20.dp, bottom = 10.dp)
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter),
-            currentPosition = sliderPosition.toLong(),
-            duration = playerController.getDuration().toLong(),
-            onSeek = {
-                playerController.seekTo(it.toInt())
-                sliderPosition = it.toInt()
-            }
-        )
+        VideoProgressSliderContent(playerController, sliderPosition)
     }
+}
+
+@Composable
+fun BoxScope.VideoProgressSliderContent(
+    playerController: PlayerState,
+    sliderPosition: MutableState<Int>
+) {
+    VideoProgressSlider(
+        modifier = Modifier
+            .padding(start = 20.dp, end = 20.dp, bottom = 20.dp)
+            .fillMaxWidth()
+            .align(Alignment.BottomCenter),
+        currentPosition = sliderPosition.value.toLong(),
+        duration = playerController.getDuration().toLong(),
+        onSeek = {
+            playerController.seekTo(it.toInt())
+            sliderPosition.value = it.toInt()
+        }
+    )
 }

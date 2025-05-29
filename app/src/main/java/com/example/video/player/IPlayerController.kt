@@ -5,8 +5,6 @@ import androidx.media3.common.Player
 
 interface IPlayerController {
 
-    fun setOnSizeChangeCallBack(callBack: (Int, Int) -> Unit)
-
     fun setDatasource(datasource: String)
 
     fun play()

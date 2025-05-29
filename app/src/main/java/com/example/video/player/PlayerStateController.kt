@@ -3,6 +3,7 @@ package com.example.video.player
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -24,7 +25,8 @@ class PlayerState(private val player: Player) : IPlayerController {
     private var datasource: String = ""
     var playerState by mutableStateOf<PlayerStatus>(PlayerStatus.IDEL)
         private set
-    private var onSizeChangeCallBack: ((Int, Int) -> Unit)? = null
+    var ratio by mutableFloatStateOf(1f)
+        private set
     fun observe() {
         player.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -64,13 +66,9 @@ class PlayerState(private val player: Player) : IPlayerController {
 
             override fun onVideoSizeChanged(videoSize: VideoSize) {
                 super.onVideoSizeChanged(videoSize)
-                onSizeChangeCallBack?.invoke(videoSize.width, videoSize.height)
+                ratio = videoSize.width / videoSize.height.toFloat()
             }
         })
-    }
-
-    override fun setOnSizeChangeCallBack(callBack: (Int, Int) -> Unit) {
-        onSizeChangeCallBack = callBack
     }
 
     override fun setDatasource(datasource: String) {
