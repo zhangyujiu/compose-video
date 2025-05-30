@@ -27,6 +27,7 @@ class PlayerState(private val player: Player) : IPlayerController {
         private set
     var ratio by mutableFloatStateOf(1f)
         private set
+
     fun observe() {
         player.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -121,7 +122,6 @@ class PlayerState(private val player: Player) : IPlayerController {
     override fun getPosition(): Int = player.currentPosition.toInt()
 
     override fun getDuration(): Int = player.duration.toInt()
-
 
     override fun seekTo(progress: Int) {
         player.seekTo(progress.toLong())

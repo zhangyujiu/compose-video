@@ -1,14 +1,12 @@
-package com.example.video
+package com.example.video.page
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.example.video.datas.videos
 import com.example.video.ext.LifecycleEffect
 import com.example.video.player.PlayerState
@@ -33,7 +31,7 @@ fun VerticalVideoPager(modifier: Modifier = Modifier) {
         state = pagerState,
     ) { page ->
         val url = videos[page]
-        ComposeVideo(
+        MediaPlayerPage(
             modifier = Modifier.fillMaxSize(),
             videoUrl = url,
             pagerState = pagerState,

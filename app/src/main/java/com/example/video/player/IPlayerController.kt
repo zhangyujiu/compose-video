@@ -1,8 +1,5 @@
 package com.example.video.player
 
-import android.content.Context
-import androidx.media3.common.Player
-
 interface IPlayerController {
 
     fun setDatasource(datasource: String)

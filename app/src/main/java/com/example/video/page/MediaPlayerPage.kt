@@ -1,7 +1,6 @@
-package com.example.video
+package com.example.video.page
 
 import android.annotation.SuppressLint
-import android.content.Context
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.compose.foundation.Image
@@ -26,25 +25,18 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.datasource.cache.CacheDataSource
-import androidx.media3.exoplayer.DefaultLoadControl
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import androidx.media3.exoplayer.upstream.DefaultAllocator
 import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
-import androidx.media3.ui.compose.modifiers.resizeWithContentScale
 import androidx.media3.ui.compose.state.rememberPresentationState
+import com.example.video.R
 import com.example.video.ext.noRippleClickable
-import com.example.video.player.ExoPlayerCache
+import com.example.video.player.PlayerFactory
 import com.example.video.player.PlayerState
 import com.example.video.player.PlayerStatus
 import com.example.video.player.rememberPlayerStateController
@@ -53,8 +45,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
+const val TAG = "MediaPlayerPage"
+
 @Composable
-fun ComposeVideo(
+fun MediaPlayerPage(
     modifier: Modifier = Modifier,
     page: Int,
     videoUrl: String,
@@ -64,11 +58,11 @@ fun ComposeVideo(
     val context = LocalContext.current
     var player by remember { mutableStateOf<Player?>(null) }
     LaunchedEffect(Unit) {
-        player = initializePlayer(context)
+        player = PlayerFactory.initializePlayer(context)
     }
 
     player?.let {
-        MediaPlayerPage(
+        MediaPlayerContent(
             modifier = modifier,
             player = it,
             pagerState = pagerState,
@@ -79,49 +73,10 @@ fun ComposeVideo(
     }
 }
 
-@OptIn(UnstableApi::class)
-private fun initializePlayer(context: Context): Player {
-    //设置预加载配置
-    //创建带有自定义缓冲策略的LoadControl
-    val loadControl = DefaultLoadControl.Builder()
-        .setAllocator(DefaultAllocator(true, 16))
-        .setBufferDurationsMs(
-            DefaultLoadControl.DEFAULT_MIN_BUFFER_MS,
-            DefaultLoadControl.DEFAULT_MAX_BUFFER_MS,
-            DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
-            DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
-        )
-        .setTargetBufferBytes(DefaultLoadControl.DEFAULT_TARGET_BUFFER_BYTES)
-        .setPrioritizeTimeOverSizeThresholds(true)
-        .build()
-
-    // Note: This should be a singleton in your app.
-    val httpDataSourceFactory = DefaultHttpDataSource.Factory()
-
-    // Configure the DataSource.Factory with the cache and factory for the desired HTTP stack.
-    val cacheDataSourceFactory =
-        CacheDataSource.Factory()
-            .setCache(ExoPlayerCache.getSimpleCache())
-            .setUpstreamDataSourceFactory(httpDataSourceFactory)
-
-    // Inject the DefaultDataSource.Factory when creating the player.
-    val player = ExoPlayer.Builder(context)
-        .setLoadControl(loadControl)
-        .setMediaSourceFactory(
-            DefaultMediaSourceFactory(context).setDataSourceFactory(cacheDataSourceFactory)
-        )
-        .build()
-    player.playWhenReady = false
-    player.repeatMode = ExoPlayer.REPEAT_MODE_OFF
-    return player
-}
-
-const val TAG = "MediaPlayerPage"
-
 @SuppressLint("ConfigurationScreenWidthHeight")
 @OptIn(UnstableApi::class)
 @Composable
-fun MediaPlayerPage(
+fun MediaPlayerContent(
     modifier: Modifier = Modifier,
     player: Player,
     pagerState: PagerState,
